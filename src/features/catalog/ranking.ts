@@ -124,6 +124,9 @@ export function rankProducts(
             ? "Tên, thương hiệu hoặc mục đích sử dụng khớp nhu cầu."
             : "Sản phẩm thuộc catalog đang hoạt động.",
           product.inStock ? "Đang còn hàng." : "Hiện đã hết hàng.",
+          Number(product.monthlySold ?? 0) >= 1_000
+            ? `Được khách hàng mua nhiều (khoảng ${new Intl.NumberFormat("vi-VN").format(Number(product.monthlySold))} sản phẩm/tháng).`
+            : "",
           input.budgetMax !== undefined ? "Nằm trong ngân sách đã chọn." : "",
         ]
           .filter(Boolean)

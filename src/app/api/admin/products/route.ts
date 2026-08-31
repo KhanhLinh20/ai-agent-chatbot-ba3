@@ -3,12 +3,23 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { demoStore } from "@/features/admin/demo-store";
 
+const nullableNumber = (min = 0, max?: number) =>
+  z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? null : Number(value)),
+    z.number().min(min).max(max ?? Number.MAX_SAFE_INTEGER).nullable().default(null),
+  );
+
 const productSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(2).max(200),
   category: z.string().trim().min(2).max(80),
   brand: z.string().trim().max(100).default("Khác"),
   price: z.coerce.number().nonnegative(),
+  monthlySold: z.coerce.number().int().nonnegative().default(0),
+  originalPrice: nullableNumber(),
+  priceBeforePromotion: nullableNumber(),
+  discountPercent: nullableNumber(0, 100),
+  voucherDiscount: nullableNumber(),
   stockQuantity: z.coerce.number().int().nonnegative(),
   imageUrl: z.string().url().nullable().default(null),
   isActive: z.boolean().default(true),
@@ -28,9 +39,12 @@ async function writeSupabase(
         product_name: body.name,
         brand: body.brand,
         price: body.price,
+        monthly_sold_value: body.monthlySold,
+        price_original: body.originalPrice,
+        price_before_promo: body.priceBeforePromotion,
+        discount_percent: body.discountPercent,
         image_url: body.imageUrl,
         is_sold_out: body.stockQuantity === 0,
-        monthly_sold_value: 0,
       })
       .select()
       .single();
@@ -42,6 +56,10 @@ async function writeSupabase(
         product_name: body.name,
         brand: body.brand,
         price: body.price,
+        monthly_sold_value: body.monthlySold,
+        price_original: body.originalPrice,
+        price_before_promo: body.priceBeforePromotion,
+        discount_percent: body.discountPercent,
         image_url: body.imageUrl,
         is_sold_out: body.stockQuantity === 0,
       })
@@ -54,7 +72,17 @@ async function writeSupabase(
 
 async function mutate(request: Request, method: "POST" | "PATCH" | "DELETE") {
   try {
-    const body = productSchema.parse(await request.json());
+    const parsed = productSchema.parse(await request.json());
+    const promotionBase = parsed.originalPrice ?? parsed.priceBeforePromotion;
+    const body = {
+      ...parsed,
+      // Persist `price` as the amount charged, so every checkout path uses the
+      // same discounted value even when an admin enters base price + percent.
+      price:
+        promotionBase != null && parsed.discountPercent
+          ? Math.max(0, Math.round(promotionBase * (1 - parsed.discountPercent / 100)))
+          : parsed.price,
+    };
     try {
       const result = await writeSupabase(method, body);
       if (result.error) throw result.error;

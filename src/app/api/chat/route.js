@@ -20,6 +20,26 @@ function getPriorityScore(p) {
   return (sold * 0.4) + (liked * 0.2) + (discount * 300) + (rating * 1000);
 }
 
+// The catalog's `price` is normally already the promotional price. Keep the
+// calculation defensive for older carts that only contain the original price
+// and a discount percentage.
+function checkoutPrice(item) {
+  const original = Number(item.price_original ?? item.original_price ?? item.price_before_promo);
+  const discount = Number(item.discount_percent);
+  const explicitDiscounted = Number(item.discounted_price ?? item.sale_price);
+  if (Number.isFinite(explicitDiscounted) && explicitDiscounted >= 0) return explicitDiscounted;
+  if (Number.isFinite(original) && Number.isFinite(discount)) {
+    return Math.max(0, Math.round(original * (1 - discount / 100)));
+  }
+  const explicit = Number(item.price);
+  if (Number.isFinite(explicit) && explicit >= 0) return explicit;
+  return 0;
+}
+
+function cartTotal(items) {
+  return items.reduce((sum, item) => sum + checkoutPrice(item) * (Number(item.quantity) || 0), 0);
+}
+
 // Helper to query products either from Supabase or Local JSON
 async function queryProducts(queryText) {
   const isSupabaseConfigured = 
@@ -242,6 +262,15 @@ Hãy hội thoại tự nhiên, không nhắc đến các mã lệnh này với 
                 item_id: prod.item_id,
                 product_name: prod.product_name,
                 price: parseFloat(prod.price),
+                discounted_price: checkoutPrice({
+                  price: prod.price,
+                  price_original: prod.price_original,
+                  price_before_promo: prod.price_before_promo,
+                  discount_percent: prod.discount_percent,
+                }),
+                price_original: prod.price_original ? parseFloat(prod.price_original) : null,
+                price_before_promo: prod.price_before_promo ? parseFloat(prod.price_before_promo) : null,
+                discount_percent: prod.discount_percent ? parseFloat(prod.discount_percent) : null,
                 image_url: prod.image_url,
                 quantity: qty
               });
@@ -265,7 +294,7 @@ Hãy hội thoại tự nhiên, không nhắc đến các mã lệnh này với 
             customer_phone: phone,
             customer_address: address,
             items: updatedCart,
-            total_amount: updatedCart.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0)
+            total_amount: cartTotal(updatedCart)
           });
 
           updatedCart = [];
@@ -316,8 +345,8 @@ Hãy hội thoại tự nhiên, không nhắc đến các mã lệnh này với 
       updatedCustomerInfo.address = message;
       updatedStep = 'confirm_order';
       
-      const cartDetails = updatedCart.map(item => `  - ${item.quantity}x ${item.product_name} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price * item.quantity)})`).join('\n');
-      const total = updatedCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const cartDetails = updatedCart.map(item => `  - ${item.quantity}x ${item.product_name} (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(checkoutPrice(item) * item.quantity)})`).join('\n');
+      const total = cartTotal(updatedCart);
       const formattedTotal = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(total);
 
       replyText = `Dạ em đã ghi nhận địa chỉ giao hàng của mình.\n\nThông tin đơn hàng của mình gồm:\n${cartDetails}\n\n*Tổng tiền:* ${formattedTotal} (Miễn phí vận chuyển).\n\n*Thông tin người nhận:* \n - Tên: ${updatedCustomerInfo.name}\n - SĐT: ${updatedCustomerInfo.phone}\n - Địa chỉ: ${updatedCustomerInfo.address}\n\nAnh/chị vui lòng nhắn *'Xác nhận'* để em lên đơn giao đi nhé ạ!`;
@@ -330,7 +359,7 @@ Hãy hội thoại tự nhiên, không nhắc đến các mã lệnh này với 
           customer_phone: updatedCustomerInfo.phone,
           customer_address: updatedCustomerInfo.address,
           items: updatedCart,
-          total_amount: updatedCart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+          total_amount: cartTotal(updatedCart)
         });
         
         replyText = `Dạ, đơn hàng của mình đã được xác nhận thành công! 🎉 \nMã đơn hàng của anh/chị là: **#ORD-${orderCreated.order_id.slice(0, 8)}**.\nNhân viên giao hàng sẽ liên hệ với mình sớm nhất ạ. Em cảm ơn anh/chị nhiều!`;
@@ -370,6 +399,15 @@ Hãy hội thoại tự nhiên, không nhắc đến các mã lệnh này với 
               item_id: firstProd.item_id,
               product_name: firstProd.product_name,
               price: parseFloat(firstProd.price),
+              discounted_price: checkoutPrice({
+                price: firstProd.price,
+                price_original: firstProd.price_original,
+                price_before_promo: firstProd.price_before_promo,
+                discount_percent: firstProd.discount_percent,
+              }),
+              price_original: firstProd.price_original ? parseFloat(firstProd.price_original) : null,
+              price_before_promo: firstProd.price_before_promo ? parseFloat(firstProd.price_before_promo) : null,
+              discount_percent: firstProd.discount_percent ? parseFloat(firstProd.discount_percent) : null,
               image_url: firstProd.image_url,
               quantity: qty
             });

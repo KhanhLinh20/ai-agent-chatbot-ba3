@@ -94,6 +94,26 @@ function productDescription(product: ProductSearchResult) {
     : description;
 }
 
+function ProductPrice({ product }: { product: ProductSearchResult }) {
+  const referencePrice = product.priceBeforePromotion ?? product.originalPrice;
+  const hasPromotion =
+    (typeof product.discountPercent === "number" && product.discountPercent > 0) ||
+    (referencePrice !== null && referencePrice > product.price);
+  return (
+    <div className={styles.productPrice}>
+      <strong>{vnd(product.price)}</strong>
+      {hasPromotion && referencePrice && referencePrice > product.price && (
+        <del>{vnd(referencePrice)}</del>
+      )}
+      {hasPromotion && typeof product.discountPercent === "number" && (
+        <span className={styles.promotionBadge}>
+          -{Math.round(product.discountPercent)}%
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [draft, setDraft] = useState("");
@@ -307,6 +327,11 @@ export default function Home() {
                           <div className={styles.productVisual}>
                             <ProductImage product={product} size={120} />
                             {product.isFeatured && <b>Bán chạy</b>}
+                            {product.monthlySold != null && product.monthlySold > 0 && (
+                              <em className={styles.purchaseCount}>
+                                Đã mua {new Intl.NumberFormat("vi-VN").format(product.monthlySold)} lượt/tháng
+                              </em>
+                            )}
                           </div>
                           <div className={styles.productContent}>
                             <small>
@@ -316,7 +341,7 @@ export default function Home() {
                             </small>
                             <h2>{product.name}</h2>
                             <p>{product.reason}</p>
-                            <strong>{vnd(product.price)}</strong>
+                            <ProductPrice product={product} />
                             <div className={styles.cardActions}>
                               <button
                                 onClick={() => {
@@ -467,7 +492,7 @@ export default function Home() {
               </div>
               <div className={styles.detailSummary}>
                 <b>{detail.brand || detail.category}</b>
-                <strong>{vnd(detail.price)}</strong>
+                <ProductPrice product={detail} />
                 <small>
                   {detail.inStock
                     ? detail.stockQuantity === null
@@ -475,6 +500,11 @@ export default function Home() {
                       : `Còn ${detail.stockQuantity} sản phẩm`
                     : "Tạm hết hàng"}
                 </small>
+                {detail.monthlySold != null && detail.monthlySold > 0 && (
+                  <span className={styles.detailPopularity}>
+                    Được mua {new Intl.NumberFormat("vi-VN").format(detail.monthlySold)} lượt/tháng
+                  </span>
+                )}
               </div>
               <section className={styles.detailDescription}>
                 <h3>Mô tả sản phẩm</h3>

@@ -7,6 +7,11 @@ const rowSchema = z.object({
   category: z.string().trim().min(2),
   brand: z.string().trim().default("Khác"),
   price: z.coerce.number().nonnegative(),
+  monthlySold: z.coerce.number().int().nonnegative().optional(),
+  originalPrice: z.coerce.number().nonnegative().nullable().optional(),
+  priceBeforePromotion: z.coerce.number().nonnegative().nullable().optional(),
+  discountPercent: z.coerce.number().min(0).max(100).nullable().optional(),
+  voucherDiscount: z.coerce.number().nonnegative().nullable().optional(),
   stockQuantity: z.coerce.number().int().nonnegative(),
   imageUrl: z.string().url().nullable().optional(),
 });

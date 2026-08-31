@@ -556,6 +556,12 @@ export async function runChatCore(
   const intro = isCompare
     ? `Marty tìm thấy ${result.products.length} lựa chọn gần nhu cầu để bạn so sánh.`
     : `Marty chọn ${result.products.length} sản phẩm phù hợp nhất dựa trên nhu cầu, giá và tình trạng hàng.`;
+  const popularProduct = [...result.products]
+    .filter((product) => Number(product.monthlySold ?? 0) >= 1_000)
+    .sort((left, right) => Number(right.monthlySold) - Number(left.monthlySold))[0];
+  const popularityNote = popularProduct
+    ? ` Trong các lựa chọn này, “${popularProduct.name}” đang được khách hàng mua nhiều (khoảng ${new Intl.NumberFormat("vi-VN").format(Number(popularProduct.monthlySold))} lượt/tháng).`
+    : "";
   const safety =
     /bé|trẻ|dị ứng|ăn kiêng/i.test(message)
       ? " Nếu dùng cho trẻ nhỏ hoặc có dị ứng, bạn nhớ kiểm tra kỹ thành phần trên bao bì."
@@ -563,12 +569,13 @@ export async function runChatCore(
   const nextStep = isCompare
     ? " Bạn nghiêng về lựa chọn nào để Marty giúp chốt sản phẩm?"
     : " Bạn muốn chọn sản phẩm nào, hay cần Marty làm rõ thêm điểm khác biệt?";
-  const text = await rewriteReply(
+  const rewrittenText = await rewriteReply(
     request,
-    `${intro}${safety}${nextStep}`,
+    `${intro}${popularityNote}${safety}${nextStep}`,
     result.products,
     analysis,
   );
+  const text = `${rewrittenText}${popularityNote}`;
 
   return {
     sessionId,

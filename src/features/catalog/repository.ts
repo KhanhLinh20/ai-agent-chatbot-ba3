@@ -18,6 +18,9 @@ type DatabaseProduct = {
   product_name: string;
   price: number | string;
   price_original: number | string | null;
+  price_before_promo?: number | string | null;
+  discount_percent?: number | string | null;
+  voucher_discount?: number | string | null;
   brand: string | null;
   rating: number | string | null;
   rating_count: number | string | null;
@@ -94,7 +97,7 @@ async function databaseSearch(
   let query = supabase
     .from("products")
     .select(
-      "item_id,shop_id,product_name,price,price_original,brand,rating,rating_count,monthly_sold_value,image_url,url,is_sold_out,description,description_source_url,description_source_type,description_confidence,description_verified",
+      "item_id,shop_id,product_name,price,price_original,price_before_promo,discount_percent,brand,rating,rating_count,monthly_sold_value,image_url,url,is_sold_out,description,description_source_url,description_source_type,description_confidence,description_verified",
     );
 
   if (input.inStockOnly) query = query.eq("is_sold_out", false);
@@ -163,6 +166,10 @@ function mapDatabaseProduct(
     price: Number(product.price),
     originalPrice:
       product.price_original === null ? null : Number(product.price_original),
+    priceBeforePromotion: nullableNumber(product.price_before_promo),
+    discountPercent: nullableNumber(product.discount_percent),
+    voucherDiscount: nullableNumber(product.voucher_discount),
+    monthlySold: nullableNumber(product.monthly_sold_value),
     stockQuantity: null,
     inStock: legacyIsInStock(product.is_sold_out),
     imageUrl: product.image_url,
@@ -234,6 +241,10 @@ function mapFallbackProduct(product: (typeof fallbackData.products)[number]) {
     originalPrice: product.price_original
       ? Number(product.price_original)
       : null,
+    priceBeforePromotion: nullableNumber(product.price_before_promo),
+    discountPercent: nullableNumber(product.discount_percent),
+    voucherDiscount: nullableNumber(product.voucher_discount),
+    monthlySold: nullableNumber(product.monthly_sold_value),
     stockQuantity: null,
     inStock: legacyIsInStock(product.is_sold_out),
     imageUrl: product.image_url || null,
@@ -284,7 +295,7 @@ export async function retrieveProductsByIds(
     const { data, error } = await supabase
       .from("products")
       .select(
-        "item_id,shop_id,product_name,price,price_original,brand,rating,rating_count,monthly_sold_value,image_url,url,is_sold_out,description,description_source_url,description_source_type,description_confidence,description_verified",
+        "item_id,shop_id,product_name,price,price_original,price_before_promo,discount_percent,brand,rating,rating_count,monthly_sold_value,image_url,url,is_sold_out,description,description_source_url,description_source_type,description_confidence,description_verified",
       )
       .in("item_id", uniqueIds);
     if (!error && data?.length) {

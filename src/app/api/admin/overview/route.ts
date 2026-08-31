@@ -21,7 +21,7 @@ export async function GET() {
     const products = await supabase
       .from("products")
       .select(
-        "item_id, product_name, brand, price, image_url, is_sold_out, monthly_sold_value, description, description_source_url, description_source_type, description_confidence",
+        "item_id, product_name, brand, price, price_original, price_before_promo, discount_percent, image_url, is_sold_out, monthly_sold_value, description, description_source_url, description_source_type, description_confidence",
       )
       .order("monthly_sold_value", { ascending: false, nullsFirst: false })
       .limit(1_000);
@@ -72,6 +72,11 @@ export async function GET() {
         category: categoryOf(product.product_name),
         brand: product.brand || "Khác",
         price: Number(product.price),
+        monthlySold: product.monthly_sold_value == null ? 0 : Number(product.monthly_sold_value),
+        originalPrice: product.price_original == null ? null : Number(product.price_original),
+        priceBeforePromotion: product.price_before_promo == null ? null : Number(product.price_before_promo),
+        discountPercent: product.discount_percent == null ? null : Number(product.discount_percent),
+        voucherDiscount: null,
         stockQuantity: product.is_sold_out ? 0 : 100,
         imageUrl: product.image_url,
         isActive: true,

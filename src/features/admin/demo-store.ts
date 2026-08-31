@@ -6,6 +6,11 @@ export type AdminProduct = {
   category: string;
   brand: string;
   price: number;
+  monthlySold?: number | null;
+  originalPrice?: number | null;
+  priceBeforePromotion?: number | null;
+  discountPercent?: number | null;
+  voucherDiscount?: number | null;
   stockQuantity: number;
   imageUrl: string | null;
   isActive: boolean;
@@ -36,6 +41,11 @@ const initialProducts: AdminProduct[] = fallbackData.products
     category: categoryOf(product.product_name),
     brand: product.brand || "Khác",
     price: Number(product.price) || 0,
+    monthlySold: product.monthly_sold_value ? Number(product.monthly_sold_value) : 0,
+    originalPrice: product.price_original ? Number(product.price_original) : null,
+    priceBeforePromotion: product.price_before_promo ? Number(product.price_before_promo) : null,
+    discountPercent: product.discount_percent ? Number(product.discount_percent) : null,
+    voucherDiscount: product.voucher_discount ? Number(product.voucher_discount) : null,
     stockQuantity:
       String(product.is_sold_out).toLowerCase() === "true" ? 0 : 100,
     imageUrl: product.image_url || null,

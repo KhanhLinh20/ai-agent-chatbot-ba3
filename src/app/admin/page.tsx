@@ -95,6 +95,13 @@ type OrderItem = {
   price: number;
 };
 
+function productSalePrice(product: Pick<AdminProduct, "price" | "originalPrice" | "discountPercent">) {
+  if (product.discountPercent && product.discountPercent > 0 && product.originalPrice) {
+    return Math.round(product.originalPrice * (1 - product.discountPercent / 100));
+  }
+  return product.price;
+}
+
 type RevenueDay = {
   key: string;
   label: string;
@@ -659,6 +666,11 @@ export default function AdminPage() {
       category: form.get("category"),
       brand: form.get("brand"),
       price: form.get("price"),
+      monthlySold: form.get("monthlySold") || 0,
+      originalPrice: form.get("originalPrice") || null,
+      priceBeforePromotion: form.get("priceBeforePromotion") || null,
+      discountPercent: form.get("discountPercent") || null,
+      voucherDiscount: form.get("voucherDiscount") || null,
       stockQuantity: form.get("stock"),
       imageUrl,
       isActive: true,
@@ -877,6 +889,8 @@ export default function AdminPage() {
                       <TableHead>Sản phẩm</TableHead>
                       <TableHead>Danh mục</TableHead>
                       <TableHead>Giá bán</TableHead>
+                      <TableHead>Khuyến mãi</TableHead>
+                      <TableHead>Lượt mua/tháng</TableHead>
                       <TableHead>Tồn kho</TableHead>
                       <TableHead>Trạng thái</TableHead>
                       <TableHead>Thao tác</TableHead>
@@ -905,7 +919,16 @@ export default function AdminPage() {
                           </div>
                         </TableCell>
                         <TableCell>{product.category}</TableCell>
-                        <TableCell>{vnd(product.price)}</TableCell>
+                        <TableCell>
+                          <div className={styles.priceCell}>
+                            <b>{vnd(productSalePrice(product))}</b>
+                            {product.originalPrice && product.originalPrice > productSalePrice(product) && <del>{vnd(product.originalPrice)}</del>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {product.discountPercent ? <span className={styles.promotionBadge}>-{product.discountPercent}%</span> : "—"}
+                        </TableCell>
+                        <TableCell>{product.monthlySold ? new Intl.NumberFormat("vi-VN").format(product.monthlySold) : "—"}</TableCell>
                         <TableCell>{product.stockQuantity}</TableCell>
                         <TableCell>
                           <span
@@ -1221,13 +1244,20 @@ export default function AdminPage() {
                 )}
                 <div>
                   <b>{viewingProduct.brand}</b>
-                  <strong>{vnd(viewingProduct.price)}</strong>
+                  <div className={styles.priceCell}>
+                    <strong>{vnd(productSalePrice(viewingProduct))}</strong>
+                    {viewingProduct.originalPrice && viewingProduct.originalPrice > productSalePrice(viewingProduct) && <del>{vnd(viewingProduct.originalPrice)}</del>}
+                    {viewingProduct.discountPercent ? <span className={styles.promotionBadge}>-{viewingProduct.discountPercent}%</span> : null}
+                  </div>
                   <small>
                     {viewingProduct.category} ·{" "}
                     {viewingProduct.stockQuantity > 0
                       ? `Còn ${viewingProduct.stockQuantity} sản phẩm`
                       : "Hết hàng"}
                   </small>
+                  {viewingProduct.monthlySold ? (
+                    <small>Đã mua {new Intl.NumberFormat("vi-VN").format(viewingProduct.monthlySold)} lượt/tháng</small>
+                  ) : null}
                 </div>
               </div>
               <section>
@@ -1324,6 +1354,18 @@ export default function AdminPage() {
                     editing === "new" || !editing ? 0 : editing.price
                   }
                 />
+              </label>
+              <label>
+                Giá gốc (trước khuyến mãi)
+                <Input name="originalPrice" type="number" min="0" defaultValue={editing === "new" || !editing ? "" : editing.originalPrice ?? ""} />
+              </label>
+              <label>
+                Phần trăm khuyến mãi (%)
+                <Input name="discountPercent" type="number" min="0" max="100" step="0.01" defaultValue={editing === "new" || !editing ? "" : editing.discountPercent ?? ""} />
+              </label>
+              <label>
+                Số lượt mua/tháng
+                <Input name="monthlySold" type="number" min="0" step="1" defaultValue={editing === "new" || !editing ? 0 : editing.monthlySold ?? 0} />
               </label>
               <label>
                 Tồn kho
